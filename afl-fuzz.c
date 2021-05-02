@@ -3417,6 +3417,7 @@ static void write_crash_readme(void) {
 static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
 
   u8  *fn = "";
+  u8  *fn2 = "";
   u8  hnb;
   s32 fd;
   u8  keeping = 0, res;
@@ -3443,6 +3444,15 @@ static u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
 #endif /* ^!SIMPLE_FILES */
 
     add_to_queue(fn, len, 0);
+
+    /* setsal prevent timestamp */
+    fn2 = alloc_printf("%s/replayable-queue/%s", out_dir, basename(queue_top->fname));
+    fd = open(fn2, O_WRONLY | O_CREAT, 0600);
+    if (fd < 0) PFATAL("Unable to create file '%s'", fn2);   
+    ck_write(fd, " ", 1, fn2);
+    close(fd); 
+    ck_free(fn2);
+
 
     if (hnb == 2) {
       queue_top->has_new_cov = 1;
@@ -4137,6 +4147,12 @@ static void maybe_delete_out_dir(void) {
   ck_free(fn);
 
   /* And now, for some finishing touches. */
+
+  /* Delete replayable-queue. */
+
+  fn = alloc_printf("%s/replayable-queue", out_dir);
+  if (delete_files(fn, "")) goto dir_cleanup_failed;
+  ck_free(fn);  
 
   fn = alloc_printf("%s/.cur_input", out_dir);
   if (unlink(fn) && errno != ENOENT) goto dir_cleanup_failed;
@@ -7480,7 +7496,14 @@ EXP_ST void setup_dirs_fds(void) {
 
   }
 
+  /* All recorded paths in structure files. */
+
+  tmp = alloc_printf("%s/replayable-queue", out_dir);
+  if (mkdir(tmp, 0700)) PFATAL("Unable to create '%s'", tmp);
+  ck_free(tmp);
+
   /* All recorded crashes. */
+  
 
   tmp = alloc_printf("%s/crashes", out_dir);
   if (mkdir(tmp, 0700)) PFATAL("Unable to create '%s'", tmp);
